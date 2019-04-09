@@ -14,6 +14,7 @@ import org.springframework.remoting.httpinvoker.HttpInvokerClientConfiguration;
 import org.springframework.remoting.httpinvoker.HttpInvokerRequestExecutor;
 import org.springframework.remoting.support.RemoteInvocation;
 import org.springframework.remoting.support.RemoteInvocationResult;
+import org.springframework.util.ClassUtils;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -27,6 +28,12 @@ public class RestHttpInvokerRequestExecutor implements HttpInvokerRequestExecuto
     private HttpClientRequestCustomizer httpClientRequestCustomizer = null;
     private ObjectMapper objectMapper = new ObjectMapper()
             .enableDefaultTyping(ObjectMapper.DefaultTyping.NON_FINAL);
+
+    private ClassLoader beanClassLoader = ClassUtils.getDefaultClassLoader();
+
+    public void setBeanClassLoader(ClassLoader classLoader) {
+        this.beanClassLoader = classLoader;
+    }
 
     public void setHttpClient(HttpClient httpClient) {
         httpRequestFactory.setHttpClient(httpClient);
@@ -90,7 +97,7 @@ public class RestHttpInvokerRequestExecutor implements HttpInvokerRequestExecuto
                 Class returnTypeClazz = null;
                 if(value.get(0) != null) {
                     try {
-                        returnTypeClazz = Class.forName((String)value.get(0));
+                        returnTypeClazz = this.beanClassLoader.loadClass((String)value.get(0));
                     } catch (ClassNotFoundException e) {
                         returnTypeClazz = originalInvocation.getMethod().getReturnType();
                     }
