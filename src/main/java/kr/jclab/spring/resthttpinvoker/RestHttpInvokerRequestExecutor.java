@@ -93,7 +93,6 @@ public class RestHttpInvokerRequestExecutor implements HttpInvokerRequestExecuto
             List value = (List)result.get("value");
             List exception = (List)result.get("exception");
             RemoteInvocationResult remoteInvocationResult = new RemoteInvocationResult();
-            remoteInvocationResult.setException((Throwable)result.get("exception"));
             if(value != null) {
                 Class returnTypeClazz = null;
                 if(value.get(0) != null) {
@@ -109,7 +108,7 @@ public class RestHttpInvokerRequestExecutor implements HttpInvokerRequestExecuto
                 Class<Throwable> returnTypeClazz = null;
                 if(exception.get(0) != null) {
                     try {
-                        returnTypeClazz = (Class<Throwable>)Class.forName((String)exception.get(0));
+                        returnTypeClazz = (Class<Throwable>)this.beanClassLoader.loadClass((String)exception.get(0));
                     } catch (Throwable e) {
                         throw new RuntimeException(e);
                     }
