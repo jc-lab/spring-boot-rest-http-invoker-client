@@ -10,6 +10,7 @@ import org.springframework.remoting.support.RemoteInvocationResult;
 public class RestHttpInvokerProxyFactoryBean extends HttpInvokerProxyFactoryBean {
     private ObjectMapper objectMapper = new ObjectMapper();
     private RestHttpInvokerRequestExecutor executor = new RestHttpInvokerRequestExecutor();
+    private RemoteInvokeRetryHandler remoteInvokeRetryHandler = null;
 
     public RestHttpInvokerProxyFactoryBean() {
         super();
@@ -33,12 +34,28 @@ public class RestHttpInvokerProxyFactoryBean extends HttpInvokerProxyFactoryBean
 
     @Override
     protected RemoteInvocationResult executeRequest(RemoteInvocation invocation, MethodInvocation originalInvocation) throws Exception {
-        return executor.jacksonExecuteRequest(this, invocation, originalInvocation);
+        int count = 0;
+        RemoteInvocationResult result;
+        do {
+            result = this.executeRequest(invocation, null);
+            count++;
+        } while (result.hasException() && checkRetry(count));
+        return result;
+    }
+
+    private boolean checkRetry(int count) {
+        if(this.remoteInvokeRetryHandler == null)
+            return false;
+        return remoteInvokeRetryHandler.checkRetry(count);
     }
 
     @Override
     protected RemoteInvocationResult executeRequest(RemoteInvocation invocation) throws Exception {
         return this.executeRequest(invocation, null);
+    }
+
+    public void setRemoteInvokeRetryHandler(RemoteInvokeRetryHandler remoteInvokeRetryHandler) {
+        this.remoteInvokeRetryHandler = remoteInvokeRetryHandler;
     }
 
     public void setHttpClientRequestCustomizer(HttpClientRequestCustomizer httpClientRequestCustomizer) {
