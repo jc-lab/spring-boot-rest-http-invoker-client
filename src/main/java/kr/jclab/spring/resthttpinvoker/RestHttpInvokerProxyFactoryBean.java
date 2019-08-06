@@ -7,6 +7,8 @@ import org.springframework.remoting.httpinvoker.HttpInvokerProxyFactoryBean;
 import org.springframework.remoting.support.RemoteInvocation;
 import org.springframework.remoting.support.RemoteInvocationResult;
 
+import java.io.IOException;
+
 public class RestHttpInvokerProxyFactoryBean extends HttpInvokerProxyFactoryBean {
     private ObjectMapper objectMapper = new ObjectMapper();
     private RestHttpInvokerRequestExecutor executor = new RestHttpInvokerRequestExecutor();
@@ -35,18 +37,27 @@ public class RestHttpInvokerProxyFactoryBean extends HttpInvokerProxyFactoryBean
     @Override
     protected RemoteInvocationResult executeRequest(RemoteInvocation invocation, MethodInvocation originalInvocation) throws Exception {
         int count = 0;
-        RemoteInvocationResult result;
+        RemoteInvocationResult result = null;
+        IOException ioException = null;
         do {
-            result = this.executeRequest(invocation, null);
+            try {
+                result = executor.jacksonExecuteRequest(this, invocation, originalInvocation);
+                if(!result.hasException())
+                    break;
+            }catch (IOException e) {
+                ioException = e;
+            }
             count++;
-        } while (result.hasException() && checkRetry(count));
+        } while (checkRetry(count, ioException, (result != null) ? result.getException() : null));
+        if(result == null && ioException != null)
+            throw ioException;
         return result;
     }
 
-    private boolean checkRetry(int count) {
+    private boolean checkRetry(int count, IOException ioException, Throwable remoteThrowable) {
         if(this.remoteInvokeRetryHandler == null)
             return false;
-        return remoteInvokeRetryHandler.checkRetry(count);
+        return remoteInvokeRetryHandler.checkRetry(count, ioException, remoteThrowable);
     }
 
     @Override
